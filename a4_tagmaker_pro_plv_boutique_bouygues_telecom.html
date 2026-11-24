@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full bg-slate-900 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A4 TagMaker Pro — PLV Boutique & Bouygues Telecom</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bouygues: {
+              cyan: '#009DCC',
+              navy: '#00205B',
+              magenta: '#E6007E',
+              yellow: '#FFD100',
+              gold: '#F59E0B',
+              dark: '#080E1E'
+            }
+          },
+          fontFamily: {
+            poppins: ['Poppins', 'sans-serif'],
+            montserrat: ['Montserrat', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,600;0,700;0,800;0,900;1,800&family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons for UI -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    /* Dimensions A4 exactes en mm & conversion affichage */
+    :root {
+      --a4-width: 210mm;
+      --a4-height: 297mm;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      user-select: none;
+    }
+
+    /* Feuille A4 virtuelle à l'écran */
+    .a4-sheet {
+      width: 210mm;
+      height: 297mm;
+      background: #ffffff;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.1);
+      position: relative;
+      overflow: hidden;
+      box-sizing: border-box;
+      margin: 0 auto;
+      transform-origin: top center;
+    }
+
+    /* Repères de coupe pointillés pour impression */
+    .crop-marks-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 50;
+    }
+    .crop-line-v {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      border-left: 1px dashed #cbd5e1;
+    }
+    .crop-line-h {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 1px;
+      border-top: 1px dashed #cbd5e1;
+    }
+
+    /* Salles des Thèmes graphiques pour les étiquettes */
+    /* Theme 1: Bouygues Studio */
+    .theme-studio {
+      background: linear-gradient(145deg, #00205B 0%, #001238 60%, #009DCC 140%);
+      color: #ffffff;
+    }
+    .theme-studio .card-accent { background: #009DCC; color: #ffffff; }
+    .theme-studio .price-block { background: linear-gradient(135deg, #009DCC 0%, #006b8f 100%); color: #ffffff; }
+    .theme-studio .badge-pop { background: #E6007E; color: #ffffff; }
+
+    /* Theme 2: Bento Tech */
+    .theme-bento {
+      background: #0f172a;
+      color: #f8fafc;
+    }
+    .theme-bento .bento-box {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(8px);
+    }
+    .theme-bento .price-block { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: #ffffff; }
+    .theme-bento .badge-pop { background: #38bdf8; color: #0f172a; }
+
+    /* Theme 3: Néon Impact */
+    .theme-neon {
+      background: #05050d;
+      color: #ffffff;
+    }
+    .theme-neon .price-block { background: linear-gradient(135deg, #E6007E 0%, #9333ea 100%); color: #ffffff; box-shadow: 0 0 20px rgba(230,0,126,0.4); }
+    .theme-neon .badge-pop { background: #FFD100; color: #000000; font-weight: 900; }
+
+    /* Theme 4: Galerie Épurée */
+    .theme-epure {
+      background: #f8fafc;
+      color: #0f172a;
+    }
+    .theme-epure .price-block { background: #00205B; color: #ffffff; }
+    .theme-epure .badge-pop { background: #009DCC; color: #ffffff; }
+
+    /* Theme 5: Pop Promo */
+    .theme-pop {
+      background: linear-gradient(145deg, #fff1f2 0%, #ffe4e6 100%);
+      color: #881337;
+    }
+    .theme-pop .price-block { background: linear-gradient(135deg, #e11d48 0%, #be123c 100%); color: #ffffff; }
+    .theme-pop .badge-pop { background: #FFD100; color: #000000; }
+
+    /* Décors Saisonniers / Bannières */
+    .decor-soldes { background: linear-gradient(90deg, #dc2626, #b91c1c); color: #fff; }
+    .decor-blackfriday { background: linear-gradient(90deg, #000000, #1f2937); color: #FFD100; border-bottom: 2px solid #FFD100; }
+    .decor-noel { background: linear-gradient(90deg, #065f46, #047857); color: #fff; }
+    .decor-flash { background: linear-gradient(90deg, #7c3aed, #4c1d95); color: #fff; }
+    .decor-frenchdays { background: linear-gradient(90deg, #2563eb, #1e40af); color: #fff; }
+    .decor-rentree { background: linear-gradient(90deg, #d97706, #b45309); color: #fff; }
+    .decor-neutre { background: transparent; }
+
+    /* Masquage UI à l'impression */
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+      body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .print-area {
+        padding: 0 !important;
+        margin: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+      }
+      .a4-sheet {
+        box-shadow: none !important;
+        margin: 0 !important;
+        width: 210mm !important;
+        height: 297mm !important;
+        page-break-after: always;
+      }
+    }
+
+    /* Tooltip & Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+
+  <!-- TOP HEADER DE L'APPLICATION -->
+  <header class="no-print bg-slate-900 border-b border-slate-800 px-4 py-3 sticky top-0 z-50 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-bouygues-navy via-bouygues-cyan to-bouygues-magenta p-0.5 shadow-lg shadow-cyan-500/20">
+        <div class="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
+          <i class="fa-solid fa-tags text-bouygues-cyan text-lg"></i>
+        </div>
+      </div>
+      <div>
+        <h1 class="font-extrabold text-base md:text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-bouygues-cyan bg-clip-text text-transparent flex items-center gap-2">
+          A4 TagMaker Pro <span class="bg-bouygues-magenta text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Édition Accessoires & PLV</span>
+        </h1>
+        <p class="text-xs text-slate-400">Atelier de création d'affiches et étiquettes boutique - Bouygues Telecom</p>
+      </div>
+    </div>
+
+    <!-- BOUTONS D'ACTION TOP HEADER -->
+    <div class="flex items-center gap-2">
+      <button onclick="applyPreset('accessories_pack')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-lg font-medium transition flex items-center gap-1.5 border border-slate-700">
+        <i class="fa-solid fa-wand-magic-sparkles text-bouygues-cyan"></i>
+        <span class="hidden sm:inline">Preset</span> Accessoire ODR
+      </button>
+      <button onclick="applyPreset('bbox_wifi7')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-lg font-medium transition flex items-center gap-1.5 border border-slate-700">
+        <i class="fa-solid fa-wifi text-bouygues-yellow"></i>
+        <span class="hidden sm:inline">Preset</span> Bbox Wi-Fi 7
+      </button>
+      <button onclick="duplicateTagToAll()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-lg font-medium transition flex items-center gap-1.5 border border-slate-700">
+        <i class="fa-solid fa-copy text-bouygues-magenta"></i>
+        <span class="hidden md:inline">Dupliquer #1 sur 4</span>
+      </button>
+      <button onclick="window.print()" class="bg-gradient-to-r from-bouygues-cyan to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs px-4 py-2 rounded-lg transition shadow-md shadow-cyan-500/20 flex items-center gap-2">
+        <i class="fa-solid fa-print"></i>
+        <span>Imprimer A4</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- BARRE DES ONGLETS DE FORMAT PLV -->
+  <div class="no-print bg-slate-900/90 border-b border-slate-800 px-4 py-2.5 flex items-center justify-center gap-2 sm:gap-4 overflow-x-auto">
+    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider hidden md:inline">Format d'affichage :</span>
+    <div class="bg-slate-950 p-1 rounded-xl border border-slate-800 flex items-center gap-1">
+      <button id="tab-A6" onclick="switchFormatTab('A6_GRID')" class="format-tab-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 bg-bouygues-cyan text-slate-950 shadow">
+        <i class="fa-solid fa-grip text-sm"></i>
+        <span>Feuille A4 — 4 Étiquettes A6 (2×2)</span>
+      </button>
+      <button id="tab-A5" onclick="switchFormatTab('A5_PORTRAIT')" class="format-tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 transition flex items-center gap-2">
+        <i class="fa-solid fa-file text-sm"></i>
+        <span>1 Affiche A5 Portrait (148.5×210 mm)</span>
+      </button>
+      <button id="tab-A4" onclick="switchFormatTab('A4_PORTRAIT')" class="format-tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 transition flex items-center gap-2">
+        <i class="fa-solid fa-expand text-sm"></i>
+        <span>1 Affiche A4 Portrait (210×297 mm)</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN WORKSPACE : PANNEAU CONFIG + APERÇU IMMERSIF -->
+  <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+
+    <!-- PANNEAU DE CONFIGURATION (GAUCHE / DESKTOP SIDEBAR) -->
+    <aside class="no-print w-full lg:w-[480px] xl:w-[520px] bg-slate-900 border-r border-slate-800 flex flex-col h-full overflow-y-auto">
+
+      <!-- SELECTEUR D'ÉTIQUETTE ACTIVE POUR LE FORMAT A6 (Visible seulement si A6) -->
+      <div id="a6-selector-bar" class="p-3 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between gap-2">
+        <span class="text-xs font-semibold text-slate-300">Éditer l'étiquette :</span>
+        <div class="flex items-center gap-1.5">
+          <button onclick="selectTagIndex(0)" id="tag-btn-0" class="tag-select-btn px-3 py-1 rounded-md text-xs font-bold bg-bouygues-cyan text-slate-950">#1 Top Gauche</button>
+          <button onclick="selectTagIndex(1)" id="tag-btn-1" class="tag-select-btn px-3 py-1 rounded-md text-xs font-medium text-slate-400 bg-slate-800 hover:text-white">#2 Top Droit</button>
+          <button onclick="selectTagIndex(2)" id="tag-btn-2" class="tag-select-btn px-3 py-1 rounded-md text-xs font-medium text-slate-400 bg-slate-800 hover:text-white">#3 Bas Gauche</button>
+          <button onclick="selectTagIndex(3)" id="tag-btn-3" class="tag-select-btn px-3 py-1 rounded-md text-xs font-medium text-slate-400 bg-slate-800 hover:text-white">#4 Bas Droit</button>
+        </div>
+      </div>
+
+      <div class="p-4 space-y-5">
+
+        <!-- SECTION 1 : THÈME GRAPHIQUE & DÉCOR SAISONNIER -->
+        <div class="bg-slate-950/50 p-3.5 rounded-xl border border-slate-800/80 space-y-3">
+          <div class="flex items-center justify-between">
+            <h2 class="text-xs font-bold text-bouygues-cyan uppercase tracking-wider flex items-center gap-1.5">
+              <i class="fa-solid fa-palette"></i> 1. Thème & Animation PLV
+            </h2>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Thème Graphique</label>
+              <select id="input-theme" onchange="updateCurrentTag('theme', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg text-xs p-2 text-slate-200 focus:border-bouygues-cyan outline-none">
+                <option value="theme-studio">Bouygues Studio (Bleu/Cyan Signature)</option>
+                <option value="theme-bento">Bento Tech (Sombre Moderne Glass)</option>
+                <option value="theme-neon">Néon Impact (Cyber / Magenta / Or)</option>
+                <option value="theme-epure">Galerie Épurée (Blanc / Premium)</option>
+                <option value="theme-pop">Pop Promo (Rose Flash / Dynamic)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Décor Saison / Bannière</label>
+              <select id="input-decor" onchange="updateCurrentTag('decor', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg text-xs p-2 text-slate-200 focus:border-bouygues-cyan outline-none">
+                <option value="decor-soldes">🔥 Soldes d'Exception</option>
+                <option value="decor-blackfriday">⚡ Black Friday</option>
+                <option value="decor-noel">🎄 Offres de Noël</option>
+                <option value="decor-flash">⚡ Ventes Flash</option>
+                <option value="decor-frenchdays">🇫🇷 French Days</option>
+                <option value="decor-rentree">🎒 Rentrée Tech</option>
+                <option value="decor-neutre">⚪ Neutre / Permanent</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 2 : ILLUSTRATION VECTORIELLE DÉTAILLÉE (PRIORITÉ ACCESSOIRES) -->
+        <div class="bg-slate-950/50 p-3.5 rounded-xl border border-slate-800/80 space-y-3">
+          <div class="flex items-center justify-between">
+            <h2 class="text-xs font-bold text-bouygues-cyan uppercase tracking-wider flex items-center gap-1.5">
+              <i class="fa-solid fa-icons"></i> 2. Illustration produit Vectorielle (36+ HD)
+            </h2>
+            <span class="text-[10px] bg-bouygues-navy text-bouygues-cyan px-2 py-0.5 rounded font-semibold">Priorité Accessoires</span>
+          </div>
+
+          <div class="space-y-2">
+            <label class="block text-[11px] text-slate-400">Choisir dans la bibliothèque vectorielle HD</label>
+            <select id="input-svg-icon" onchange="updateCurrentTag('svgIconKey', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg text-xs p-2 text-slate-200 focus:border-bouygues-cyan outline-none">
+              <!-- Categorie 1: Audio & Son -->
+              <optgroup label="🎧 ACCESSOIRES — Audio & Son">
+                <option value="tws_earbuds">Écouteurs TWS Sans Fil avec Boîtier Ouvert</option>
+                <option value="anc_pro_buds">Écouteurs ANC Pro avec Tiges Métallisées</option>
+                <option value="hifi_headphones">Casque Audio Hi-Fi Arceau Rembourré</option>
+                <option value="speaker_jbl">Enceinte Bluetooth Cylindrique Nomade</option>
+                <option value="mini_speaker">Mini Enceinte Portable avec Dragonne</option>
+                <option value="soundbar_tv">Barre de Son TV Compacte & Caisson</option>
+                <option value="wireless_mic">Micro Cravate Sans Fil Podcast/Vlog</option>
+              </optgroup>
+              <!-- Categorie 2: Charge, Câbles & Protection -->
+              <optgroup label="⚡ ACCESSOIRES — Charge, Câbles & Protection">
+                <option value="powerbank_magsafe">Batterie Externe MagSafe Induction</option>
+                <option value="powerbank_20k">Powerbank 20000mAh Écran LED Chiffres</option>
+                <option value="charger_gan_65w">Chargeur Secteur USB-C GaN 65W Ultra-Rapide</option>
+                <option value="wireless_3in1">Station de Charge 3-en-1 (Smartphone, Montre, Buds)</option>
+                <option value="cable_braided">Câble USB-C vers USB-C Tressé Renforcé</option>
+                <option value="car_charger">Chargeur Voiture Allume-Cigare Dual USB-C</option>
+                <option value="case_magsafe">Coque Antichoc MagSafe Transparente Reinforced</option>
+                <option value="tempered_glass">Verre Trempé Haute Résistance + Cadre Pose</option>
+                <option value="holder_mag_car">Support Auto Magnétique Grille d'Aération</option>
+                <option value="microsd_card">Carte Mémoire MicroSDXC High Speed 256Go</option>
+                <option value="precision_stylus">Stylet Tactile Aluminium Haute Précision</option>
+                <option value="gps_tracker">Tracker GPS Porte-Clés Connecté</option>
+              </optgroup>
+              <!-- Categorie 3: Montres & Objets Connectés -->
+              <optgroup label="⌚ ACCESSOIRES — Montres & Smart Home">
+                <option value="watch_sport">Montre Connectée Sport Écran AMOLED</option>
+                <option value="watch_elegance">Montre Connectée Élégance Cadran Rond</option>
+                <option value="fitness_band">Bracelet Connecté Suivi Santé Fitness</option>
+                <option value="wifi_camera">Caméra de Surveillance Wi-Fi FHD Rotative</option>
+                <option value="smart_bulb">Ampoule Connectée RGB Smart Home</option>
+                <option value="smart_plug">Prise Connectée Wi-Fi avec Conso Énergie</option>
+              </optgroup>
+              <!-- Categorie 4: Box & Réseau -->
+              <optgroup label="🌐 BOX & RÉSEAU — Bouygues Telecom">
+                <option value="bbox_wifi7">Bbox Fibre Wi-Fi 7 Verticale Black Design</option>
+                <option value="bbox_repeater">Répéteur Wi-Fi 6 Bouygues Blanc</option>
+                <option value="cpl_devolo_pack">Pack CPL Duo Prises Courant Porteur</option>
+                <option value="pocket_wifi_4g">Pocket Wi-Fi 4G/5G Nomade</option>
+              </optgroup>
+              <!-- Categorie 5: Mobiles & Smartphones -->
+              <optgroup label="📱 SMARTPHONES & MOBILES">
+                <option value="phone_5g_pro">Smartphone 5G Pro Triple Capteur</option>
+                <option value="phone_foldable">Smartphone Pliable Flip Next-Gen</option>
+                <option value="phone_refurbished">Smartphone Reconditionné Éco-Certifié</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <div class="pt-1">
+            <label class="block text-[11px] text-slate-400 mb-1">Ou importer une image produit locale (PNG/JPG)</label>
+            <input type="file" id="input-custom-image" accept="image/*" onchange="handleImageUpload(event)" class="text-xs text-slate-400 file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-bouygues-cyan hover:file:bg-slate-700 cursor-pointer">
+            <button id="btn-remove-image" onclick="clearCustomImage()" class="hidden mt-1 text-[11px] text-rose-400 hover:underline">Supprimer l'image importée (revenir à l'icône SVG)</button>
+          </div>
+        </div>
+
+        <!-- SECTION 3 : CONTENUS TEXTES & CARACTÉRISTIQUES -->
+        <div class="bg-slate-950/50 p-3.5 rounded-xl border border-slate-800/80 space-y-3">
+          <h2 class="text-xs font-bold text-bouygues-cyan uppercase tracking-wider flex items-center gap-1.5">
+            <i class="fa-solid fa-pen-to-square"></i> 3. Textes & Spécifications Produits
+          </h2>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Badge Marque / Top</label>
+              <input type="text" id="input-badge" oninput="updateCurrentTag('badge', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg text-xs p-2 text-slate-200 focus:border-bouygues-cyan outline-none" placeholder="ex: ANKER, JBL, INNODEV">
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Sous-titre / Slogan</label>
+              <input type="text" id="input-subtitle" oninput="updateCurrentTag('subtitle', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg text-xs p-2 text-slate-200 focus:border-bouygues-cyan outline-none" placeholder="ex: Réduction de Bruit Active">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">Nom Principal du Produit</label>
+            <input type="text" id="input-title" oninput="updateCurrentTag('title', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg text-xs p-2 font-bold text-white focus:border-bouygues-cyan outline-none" placeholder="ex: Écouteurs Soundcore Liberty 4">
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="block text-[11px] text-slate-400">4 Puces de Caractéristiques Principales</label>
+            <div class="grid grid-cols-1 gap-1.5">
+              <input type="text" id="input-bullet-0" oninput="updateBullet(0, this.value)" class="bg-slate-900 border border-slate-700 rounded-md text-xs p-1.5 text-slate-200" placeholder="Puce 1 (ex: Autonomie 28h avec boîtier)">
+              <input type="text" id="input-bullet-1" oninput="updateBullet(1, this.value)" class="bg-slate-900 border border-slate-700 rounded-md text-xs p-1.5 text-slate-200" placeholder="Puce 2 (ex: Bluetooth 5.3 Multi-points)">
+              <input type="text" id="input-bullet-2" oninput="updateBullet(2, this.value)" class="bg-slate-900 border border-slate-700 rounded-md text-xs p-1.5 text-slate-200" placeholder="Puce 3 (ex: Charge Rapide USB-C 10min = 2h)">
+              <input type="text" id="input-bullet-3" oninput="updateBullet(3, this.value)" class="bg-slate-900 border border-slate-700 rounded-md text-xs p-1.5 text-slate-200" placeholder="Puce 4 (ex: Protection IPX5 Résistant pluie)">
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 4 : TARIFICATION & REMBOURSEMENT (ODR) -->
+        <div class="bg-slate-950/50 p-3.5 rounded-xl border border-slate-800/80 space-y-3">
+          <h2 class="text-xs font-bold text-bouygues-cyan uppercase tracking-wider flex items-center gap-1.5">
+            <i class="fa-solid fa-euro-sign"></i> 4. Tarifs, ODR & Mensualités
+          </h2>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Prix Barré (€)</label>
+              <input type="text" id="input-price-old" oninput="updateCurrentTag('priceOld', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg text-xs p-2 text-slate-400 line-through focus:border-bouygues-cyan outline-none" placeholder="ex: 89,99€">
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Prix Final / Promo (€)</label>
+              <input type="text" id="input-price-new" oninput="updateCurrentTag('priceNew', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg text-xs p-2 font-black text-bouygues-yellow focus:border-bouygues-cyan outline-none" placeholder="ex: 49,99€">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Mention ODR / Cashback</label>
+              <input type="text" id="input-odr" oninput="updateCurrentTag('odrText', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg text-xs p-2 text-rose-400 font-semibold focus:border-bouygues-cyan outline-none" placeholder="ex: 30€ remboursés sur demande">
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Paiement / Forfait</label>
+              <input type="text" id="input-subtext" oninput="updateCurrentTag('subtext', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg text-xs p-2 text-slate-300 focus:border-bouygues-cyan outline-none" placeholder="ex: Ou 12,49€ x 4 sans frais">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">Mentions Légales & Indice DAS/Réparabilité</label>
+            <input type="text" id="input-legal" oninput="updateCurrentTag('legalText', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg text-xs p-2 text-slate-500 focus:border-bouygues-cyan outline-none" placeholder="ex: Voir conditions en magasin. DAS Tête: 0.89 W/kg. Gar 2 ans.">
+          </div>
+        </div>
+
+        <!-- SECTION 5 : RÉGLAGES DÉTAILLÉS & VOLUMETRIE BLOC PRIX XXL -->
+        <div class="bg-slate-950/50 p-3.5 rounded-xl border border-slate-800/80 space-y-3">
+          <h2 class="text-xs font-bold text-bouygues-cyan uppercase tracking-wider flex items-center gap-1.5">
+            <i class="fa-solid fa-sliders"></i> 5. Réglages Fins des Échelles
+          </h2>
+
+          <div class="space-y-2.5">
+            <div>
+              <div class="flex justify-between text-[11px] text-slate-300 mb-1">
+                <span>Taille du Titre Produit</span>
+                <span id="title-size-val" class="font-mono text-bouygues-cyan">28px</span>
+              </div>
+              <input type="range" id="slider-title-size" min="18" max="44" value="28" oninput="updateCurrentTag('titleFontSize', this.value)" class="w-full accent-bouygues-cyan cursor-pointer">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-[11px] text-slate-300 mb-1">
+                <span>Taille des Caractéristiques</span>
+                <span id="bullet-size-val" class="font-mono text-bouygues-cyan">12px</span>
+              </div>
+              <input type="range" id="slider-bullet-size" min="9" max="18" value="12" oninput="updateCurrentTag('bulletFontSize', this.value)" class="w-full accent-bouygues-cyan cursor-pointer">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-[11px] text-slate-300 mb-1">
+                <span>Échelle Icône / Image Produit</span>
+                <span id="icon-scale-val" class="font-mono text-bouygues-cyan">100%</span>
+              </div>
+              <input type="range" id="slider-icon-scale" min="60" max="150" value="100" oninput="updateCurrentTag('iconScale', this.value)" class="w-full accent-bouygues-cyan cursor-pointer">
+            </div>
+
+            <div class="pt-1 border-t border-slate-800">
+              <div class="flex justify-between text-[11px] font-bold text-bouygues-yellow mb-1">
+                <span>🔥 Hauteur / Volume du Bloc Prix XXL</span>
+                <span id="price-volume-val" class="font-mono text-bouygues-yellow">115%</span>
+              </div>
+              <input type="range" id="slider-price-volume" min="90" max="165" value="115" oninput="updateCurrentTag('priceVolume', this.value)" class="w-full accent-bouygues-yellow cursor-pointer">
+            </div>
+          </div>
+        </div>
+
+        <!-- REPERES DE DECOUPE POINTILLÉS -->
+        <div class="flex items-center justify-between p-2.5 bg-slate-950/30 rounded-lg border border-slate-800">
+          <label for="input-crop-marks" class="text-xs font-medium text-slate-300 cursor-pointer flex items-center gap-2">
+            <i class="fa-solid fa-scissors text-slate-400"></i>
+            <span>Afficher repères de découpe pointillés</span>
+          </label>
+          <input type="checkbox" id="input-crop-marks" checked onchange="toggleCropMarks(this.checked)" class="w-4 h-4 accent-bouygues-cyan rounded cursor-pointer">
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- ZONE D'AFFICHAGE & PREVIEW FEUILLE A4 (DROITE) -->
+    <main class="flex-1 bg-slate-950 p-3 sm:p-6 flex flex-col items-center justify-start overflow-y-auto print-area relative">
+
+      <!-- TOOLBAR DE CONTRÔLE PREVIEW ET ZOOM -->
+      <div class="no-print w-full max-w-[210mm] mb-3 flex items-center justify-between bg-slate-900/80 backdrop-blur px-4 py-2 rounded-xl border border-slate-800">
+        <div class="flex items-center space-x-2 text-xs text-slate-300">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="font-medium" id="format-indicator-label">Feuille A4 — 4 Étiquettes A6 (2×2)</span>
+        </div>
+        <div class="flex items-center gap-3 text-xs">
+          <button onclick="zoomPreview(0.9)" class="p-1.5 hover:bg-slate-800 rounded text-slate-300" title="Dézoomer"><i class="fa-solid fa-minus"></i></button>
+          <span id="zoom-level-text" class="font-mono text-slate-400">100%</span>
+          <button onclick="zoomPreview(1.1)" class="p-1.5 hover:bg-slate-800 rounded text-slate-300" title="Zoomer"><i class="fa-solid fa-plus"></i></button>
+          <button onclick="resetZoom()" class="p-1.5 hover:bg-slate-800 rounded text-slate-300" title="Réinitialiser zoom"><i class="fa-solid fa-rotate-left"></i></button>
+        </div>
+      </div>
+
+      <!-- WORKSPACE DE LA FEUILLE A4 EXAGÉRÉMENT PRÉCISE -->
+      <div id="zoom-container" class="transition-transform duration-200 ease-out origin-top flex justify-center w-full">
+
+        <!-- FEUILLE IMPRIMABLE A4 -->
+        <div id="a4-sheet" class="a4-sheet text-slate-900 font-poppins relative flex flex-col">
+
+          <!-- CALQUE REPÈRES DE DÉCOUPE POINTILLÉS -->
+          <div id="crop-marks-layer" class="crop-marks-overlay">
+            <div id="crop-mark-v" class="crop-line-v" style="left: 50%;"></div>
+            <div id="crop-mark-h" class="crop-line-h" style="top: 50%;"></div>
+          </div>
+
+          <!-- CONTENEUR DYNAMIQUE DES ÉTIQUETTES SELON ONGLET SELECTIONNÉ -->
+          <div id="tags-render-container" class="w-full h-full">
+            <!-- Injecté dynamiquement par JavaScript -->
+          </div>
+
+        </div>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- JAVASCRIPT LOGIC & SVG ICON LIBRARY -->
+  <script>
+    // ---------------------------------------------------------------------
+    // 1. BASE DE DONNÉES VECTORIELLES HD (36+ ILLUSTRATIONS EN ACCESSOIRES)
+    // ---------------------------------------------------------------------
+    const SVG_LIBRARY = {
+
+      // --- CATEGORIE 1 : AUDIO & SON ---
+      tws_earbuds: `
+        <svg viewBox="0 0 200 200" class="w-full h-full drop-shadow-xl" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="caseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#1e293b"/>
+              <stop offset="100%" stop-color="#0f172a"/>
+            </linearGradient>
+            <linearGradient id="earGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#ffffff"/>
+              <stop offset="100%" stop-color="#cbd5e1"/>
+            </linearGradient>
+          </defs>
+          <!-- Boîtier ouvert -->
+          <rect x="40" y="80" width="120" height="90" rx="30" fill="url(#caseGrad)" stroke="#009DCC" stroke-width="3"/>
+          <path d="M 45 85 Q 100 60 155 85" fill="none" stroke="#334155" stroke-width="3"/>
+          <!-- Écouteur Gauche -->
+          <g transform="translate(65, 45)">
+            <ellipse cx="15" cy="20" rx="14" ry="18" fill="url(#earGrad)"/>
+            <rect x="10" y="30" width="8" height="35" rx="4" fill="url(#earGrad)"/>
+            <circle cx="15" cy="20" r="5" fill="#009DCC"/>
+          </g>
+          <!-- Écouteur Droit -->
+          <g transform="translate(110, 45)">
+            <ellipse cx="15" cy="20" rx="14" ry="18" fill="url(#earGrad)"/>
+            <rect x="12" y="30" width="8" height="35" rx="4" fill="url(#earGrad)"/>
+            <circle cx="15" cy="20" r="5" fill="#E6007E"/>
+          </g>
+          <circle cx="100" cy="130" r="4" fill="#009DCC"/>
+        </svg>`,
+
+      anc_pro_buds: `
+        <svg viewBox="0 0 200 200" class="w-full h-full drop-shadow-xl" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="metalGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#94a3b8"/>
+              <stop offset="50%" stop-color="#f8fafc"/>
+              <stop offset="100%" stop-color="#64748b"/>
+            </linearGradient>
+          </defs>
+          <g transform="translate(45,20)">
+            <!-- Stem left -->
+            <rect x="30" y="60" width="12" height="75" rx="6" fill="url(#metalGrad)"/>
+            <path d="M 15 40 Q 35 20 45 50 Q 30 70 15 40 Z" fill="#0f172a"/>
+            <circle cx="28" cy="42" r="7" fill="#009DCC"/>
+          </g>
+          <g transform="translate(100,20)">
+            <rect x="30" y="60" width="12" height="75" rx="6" fill="url(#metalGrad)"/>
+            <path d="M 50 40 Q 30 20 20 50 Q 35 70 50 40 Z" fill="#0f172a"/>
+            <circle cx="37" cy="42" r="7" fill="#009DCC"/>
+          </g>
+          <!-- Ondes ANC -->
+          <path d="M 20 100 Q 10 100 10 80" stroke="#009DCC" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M 180 100 Q 190 100 190 80" stroke="#009DCC" stroke-width="3" fill="none" stroke-linecap="round"/>
+        </svg>`,
+
+      hifi_headphones: `
+        <svg viewBox="0 0 200 200" class="w-full h-full drop-shadow-xl" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 35 110 A 70 70 0 0 1 165 110" fill="none" stroke="#1e293b" stroke-width="18" stroke-linecap="round"/>
+          <path d="M 35 110 A 70 70 0 0 1 165 110" fill="none" stroke="#009DCC" stroke-width="4" stroke-linecap="round"/>
+          <!-- Oreillettes -->
+          <rect x="20" y="95" width="30" height="60" rx="15" fill="#0f172a" stroke="#E6007E" stroke-width="3"/>
+          <rect x="150" y="95" width="30" height="60" rx="15" fill="#0f172a" stroke="#E6007E" stroke-width="3"/>
+          <rect x="10" y="105" width="12" height="40" rx="6" fill="#94a3b8"/>
+          <rect x="178" y="105" width="12" height="40" rx="6" fill="#94a3b8"/>
+        </svg>`,
+
+      speaker_jbl: `
+        <svg viewBox="0 0 200 200" class="w-full h-full fill-current" xmlns="http://www.w3.org/2000/svg">
+          <rect x="45" y="30" width="110" height="140" rx="35" fill="#0f172a" stroke="#E6007E" stroke-width="4"/>
+          <!-- Texture Grille -->
+          <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
+            <circle cx="5" cy="5" r="1.5" fill="#334155"/>
+          </pattern>
+          <rect x="52" y="37" width="96" height="126" rx="28" fill="url(#grid)"/>
+          <!-- Logo central -->
+          <rect x="80" y="88" width="40" height="24" rx="6" fill="#E6007E"/>
+          <text x="100" y="104" font-size="11" font-weight="900" fill="#ffffff" text-anchor="middle">SOUND</text>
+        </svg>`,
+
+      mini_speaker: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="100" cy="110" r="60" fill="#1e293b" stroke="#009DCC" stroke-width="5"/>
+          <circle cx="100" cy="110" r="42" fill="#0f172a" stroke="#334155" stroke-width="3"/>
+          <circle cx="100" cy="110" r="20" fill="#009DCC"/>
+          <!-- Dragonne -->
+          <path d="M 135 60 Q 160 30 180 45 T 150 70" fill="none" stroke="#E6007E" stroke-width="5" stroke-linecap="round"/>
+        </svg>`,
+
+      soundbar_tv: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <rect x="15" y="85" width="170" height="30" rx="8" fill="#0f172a" stroke="#38bdf8" stroke-width="3"/>
+          <circle cx="35" cy="100" r="6" fill="#334155"/>
+          <circle cx="55" cy="100" r="6" fill="#334155"/>
+          <circle cx="145" cy="100" r="6" fill="#334155"/>
+          <circle cx="165" cy="100" r="6" fill="#334155"/>
+          <rect x="90" y="96" width="20" height="8" rx="2" fill="#009DCC"/>
+        </svg>`,
+
+      wireless_mic: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <rect x="75" y="40" width="50" height="80" rx="12" fill="#1e293b" stroke="#009DCC" stroke-width="3"/>
+          <rect x="85" y="50" width="30" height="25" rx="6" fill="#0f172a" stroke="#475569" stroke-width="2"/>
+          <circle cx="100" cy="95" r="5" fill="#E6007E"/>
+          <!-- Pince -->
+          <path d="M 65 70 L 75 70 L 75 90 L 65 85 Z" fill="#64748b"/>
+        </svg>`,
+
+      // --- CATEGORIE 2 : CHARGE, CÂBLES & PROTECTION ---
+      powerbank_magsafe: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <rect x="55" y="30" width="90" height="140" rx="18" fill="#1e293b" stroke="#009DCC" stroke-width="4"/>
+          <!-- Cercle MagSafe -->
+          <circle cx="100" cy="95" r="32" fill="none" stroke="#ffffff" stroke-width="4" stroke-dasharray="6,4"/>
+          <rect x="96" y="132" width="8" height="20" rx="4" fill="#ffffff"/>
+          <!-- Indicateur LED Charge -->
+          <circle cx="100" cy="155" r="3" fill="#10b981"/>
+        </svg>`,
+
+      powerbank_20k: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <rect x="45" y="25" width="110" height="150" rx="16" fill="#0f172a" stroke="#475569" stroke-width="4"/>
+          <!-- Écran LED Chiffres -->
+          <rect x="65" y="40" width="70" height="30" rx="6" fill="#000000" stroke="#009DCC" stroke-width="2"/>
+          <text x="100" y="61" font-size="16" font-weight="900" fill="#009DCC" text-anchor="middle">100 %</text>
+          <rect x="70" y="155" width="20" height="6" rx="3" fill="#334155"/>
+          <rect x="110" y="155" width="20" height="6" rx="3" fill="#334155"/>
+        </svg>`,
+
+      charger_gan_65w: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 60 70 L 140 70 L 140 150 L 60 150 Z" fill="#1e293b" stroke="#009DCC" stroke-width="4"/>
+          <!-- Prises secteur -->
+          <rect x="80" y="30" width="10" height="40" rx="4" fill="#94a3b8"/>
+          <rect x="110" y="30" width="10" height="40" rx="4" fill="#94a3b8"/>
+          <!-- Ports USB-C GaN -->
+          <rect x="80" y="90" width="40" height="10" rx="4" fill="#0f172a" stroke="#E6007E" stroke-width="2"/>
+          <rect x="80" y="115" width="40" height="10" rx="4" fill="#0f172a" stroke="#009DCC" stroke-width="2"/>
+          <text x="100" y="142" font-size="10" font-weight="800" fill="#FFD100" text-anchor="middle">GaN 65W</text>
+        </svg>`,
+
+      wireless_3in1: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="100" cy="150" rx="80" ry="25" fill="#0f172a" stroke="#009DCC" stroke-width="3"/>
+          <!-- Stand Smartphone -->
+          <rect x="50" y="60" width="50" height="80" rx="10" fill="#1e293b" stroke="#38bdf8" stroke-width="2" transform="rotate(-10 75 100)"/>
+          <!-- Support Montre -->
+          <rect x="125" y="70" width="30" height="60" rx="15" fill="#1e293b" stroke="#E6007E" stroke-width="2"/>
+        </svg>`,
+
+      cable_braided: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 30 160 C 60 40, 140 160, 170 40" fill="none" stroke="#009DCC" stroke-width="12" stroke-linecap="round"/>
+          <path d="M 30 160 C 60 40, 140 160, 170 40" fill="none" stroke="#ffffff" stroke-width="3" stroke-dasharray="4,4"/>
+          <!-- Embout USB-C Left -->
+          <rect x="15" y="150" width="25" height="18" rx="4" fill="#0f172a" stroke="#94a3b8" stroke-width="2"/>
+          <!-- Embout USB-C Right -->
+          <rect x="160" y="25" width="25" height="18" rx="4" fill="#0f172a" stroke="#94a3b8" stroke-width="2"/>
+        </svg>`,
+
+      car_charger: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 75 40 L 125 40 L 115 130 L 85 130 Z" fill="#1e293b" stroke="#009DCC" stroke-width="3"/>
+          <circle cx="100" cy="40" r="28" fill="#0f172a" stroke="#E6007E" stroke-width="3"/>
+          <rect x="88" y="30" width="24" height="8" rx="3" fill="#009DCC"/>
+          <rect x="88" y="44" width="24" height="8" rx="3" fill="#FFD100"/>
+        </svg>`,
+
+      case_magsafe: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <rect x="50" y="25" width="100" height="150" rx="22" fill="none" stroke="#38bdf8" stroke-width="5"/>
+          <rect x="62" y="40" width="35" height="35" rx="10" fill="none" stroke="#64748b" stroke-width="3"/>
+          <circle cx="100" cy="110" r="28" fill="none" stroke="#ffffff" stroke-width="4"/>
+          <line x1="100" y1="138" x2="100" y2="152" stroke="#ffffff" stroke-width="4"/>
+        </svg>`,
+
+      tempered_glass: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <rect x="55" y="30" width="90" height="140" rx="18" fill="#38bdf8" fill-opacity="0.15" stroke="#38bdf8" stroke-width="3" stroke-dasharray="6,3"/>
+          <!-- Flash / Protection -->
+          <polygon points="110,40 85,100 105,100 90,160 120,90 100,90" fill="#FFD100"/>
+        </svg>`,
+
+      holder_mag_car: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="100" cy="90" r="45" fill="#1e293b" stroke="#009DCC" stroke-width="4"/>
+          <circle cx="100" cy="90" r="30" fill="#0f172a" stroke="#E6007E" stroke-width="3"/>
+          <!-- Pince Aération -->
+          <rect x="90" y="135" width="20" height="35" rx="4" fill="#475569"/>
+        </svg>`,
+
+      microsd_card: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 60 40 L 120 40 L 140 60 L 140 160 L 60 160 Z" fill="#0f172a" stroke="#009DCC" stroke-width="4"/>
+          <rect x="75" y="50" width="8" height="20" fill="#FFD100"/>
+          <rect x="90" y="50" width="8" height="20" fill="#FFD100"/>
+          <rect x="105" y="50" width="8" height="20" fill="#FFD100"/>
+          <text x="100" y="120" font-size="18" font-weight="900" fill="#ffffff" text-anchor="middle">256 GB</text>
+          <text x="100" y="140" font-size="10" font-weight="700" fill="#E6007E" text-anchor="middle">microSDXC</text>
+        </svg>`,
+
+      precision_stylus: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 150 30 L 170 50 L 60 160 L 40 160 L 40 140 Z" fill="#94a3b8" stroke="#009DCC" stroke-width="3"/>
+          <polygon points="40,160 30,170 45,165" fill="#0f172a"/>
+        </svg>`,
+
+      gps_tracker: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="100" cy="110" r="45" fill="#f8fafc" stroke="#cbd5e1" stroke-width="4"/>
+          <circle cx="100" cy="110" r="15" fill="#009DCC"/>
+          <!-- Anneau Porte Clés -->
+          <circle cx="100" cy="50" r="18" fill="none" stroke="#94a3b8" stroke-width="5"/>
+        </svg>`,
+
+      // --- CATEGORIE 3 : MONTRES & SMART HOME ---
+      watch_sport: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <rect x="82" y="20" width="36" height="160" rx="8" fill="#1e293b"/>
+          <rect x="60" y="60" width="80" height="80" rx="24" fill="#0f172a" stroke="#009DCC" stroke-width="4"/>
+          <circle cx="100" cy="100" r="30" fill="none" stroke="#E6007E" stroke-width="4"/>
+          <text x="100" y="105" font-size="14" font-weight="800" fill="#ffffff" text-anchor="middle">10:42</text>
+        </svg>`,
+
+      watch_elegance: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <rect x="85" y="20" width="30" height="160" rx="6" fill="#334155"/>
+          <circle cx="100" cy="100" r="45" fill="#0f172a" stroke="#f59e0b" stroke-width="5"/>
+          <line x1="100" y1="100" x2="100" y2="70" stroke="#f59e0b" stroke-width="3"/>
+          <line x1="100" y1="100" x2="120" y2="100" stroke="#f59e0b" stroke-width="3"/>
+        </svg>`,
+
+      fitness_band: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <rect x="80" y="25" width="40" height="150" rx="20" fill="#0f172a" stroke="#38bdf8" stroke-width="3"/>
+          <rect x="86" y="65" width="28" height="70" rx="10" fill="#1e293b"/>
+          <text x="100" y="95" font-size="10" font-weight="700" fill="#10b981" text-anchor="middle">8 452</text>
+          <text x="100" y="110" font-size="8" fill="#94a3b8" text-anchor="middle">PAS</text>
+        </svg>`,
+
+      wifi_camera: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="100" cy="80" r="45" fill="#1e293b" stroke="#009DCC" stroke-width="4"/>
+          <circle cx="100" cy="80" r="25" fill="#0f172a"/>
+          <circle cx="100" cy="80" r="10" fill="#009DCC"/>
+          <path d="M 70 130 L 130 130 L 140 170 L 60 170 Z" fill="#0f172a" stroke="#475569" stroke-width="3"/>
+        </svg>`,
+
+      smart_bulb: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 70 80 A 40 40 0 1 1 130 80 C 130 100, 115 110, 115 130 L 85 130 C 85 110, 70 100, 70 80 Z" fill="#FFD100" stroke="#f59e0b" stroke-width="3"/>
+          <rect x="85" y="130" width="30" height="20" rx="4" fill="#64748b"/>
+        </svg>`,
+
+      smart_plug: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <rect x="60" y="50" width="80" height="100" rx="20" fill="#1e293b" stroke="#009DCC" stroke-width="4"/>
+          <circle cx="85" cy="90" r="6" fill="#0f172a"/>
+          <circle cx="115" cy="90" r="6" fill="#0f172a"/>
+          <circle cx="100" cy="125" r="4" fill="#10b981"/>
+        </svg>`,
+
+      // --- CATEGORIE 4 : BOX & RÉSEAU BOUYGUES ---
+      bbox_wifi7: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <!-- Tour Bbox Verticale Design Noir Matte -->
+          <rect x="65" y="25" width="70" height="150" rx="16" fill="#090d16" stroke="#009DCC" stroke-width="4"/>
+          <!-- Bandeau central glossy -->
+          <rect x="92" y="35" width="16" height="130" rx="8" fill="#00205B"/>
+          <!-- Lignes de LED Wi-Fi 7 Verticaux -->
+          <circle cx="100" cy="55" r="3" fill="#009DCC"/>
+          <circle cx="100" cy="70" r="3" fill="#009DCC"/>
+          <circle cx="100" cy="85" r="3" fill="#009DCC"/>
+          <circle cx="100" cy="100" r="3" fill="#10b981"/>
+          <!-- Logo Wi-Fi 7 -->
+          <text x="100" y="140" font-size="10" font-weight="900" fill="#FFD100" text-anchor="middle">Wi-Fi 7</text>
+        </svg>`,
+
+      bbox_repeater: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <rect x="60" y="40" width="80" height="120" rx="24" fill="#f8fafc" stroke="#cbd5e1" stroke-width="4"/>
+          <circle cx="100" cy="85" r="8" fill="#009DCC"/>
+          <!-- Ondes Wi-Fi -->
+          <path d="M 80 115 A 25 25 0 0 1 120 115" fill="none" stroke="#009DCC" stroke-width="3" stroke-linecap="round"/>
+          <path d="M 88 125 A 15 15 0 0 1 112 125" fill="none" stroke="#009DCC" stroke-width="3" stroke-linecap="round"/>
+        </svg>`,
+
+      cpl_devolo_pack: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <!-- CPL 1 -->
+          <rect x="35" y="50" width="55" height="90" rx="12" fill="#1e293b" stroke="#009DCC" stroke-width="3"/>
+          <circle cx="62" cy="75" r="10" fill="#0f172a"/>
+          <!-- CPL 2 -->
+          <rect x="110" y="50" width="55" height="90" rx="12" fill="#1e293b" stroke="#009DCC" stroke-width="3"/>
+          <circle cx="137" cy="75" r="10" fill="#0f172a"/>
+          <!-- Ligne Réseau Connectrice -->
+          <path d="M 90 95 L 110 95" stroke="#FFD100" stroke-width="4" stroke-dasharray="3,3"/>
+        </svg>`,
+
+      pocket_wifi_4g: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <rect x="50" y="60" width="100" height="80" rx="16" fill="#0f172a" stroke="#E6007E" stroke-width="4"/>
+          <rect x="65" y="75" width="70" height="30" rx="6" fill="#1e293b"/>
+          <text x="100" y="94" font-size="12" font-weight="800" fill="#009DCC" text-anchor="middle">4G / 5G</text>
+        </svg>`,
+
+      // --- CATEGORIE 5 : MOBILES & SMARTPHONES ---
+      phone_5g_pro: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <rect x="50" y="20" width="100" height="160" rx="20" fill="#0f172a" stroke="#38bdf8" stroke-width="4"/>
+          <!-- Bloc 3 appareils photo -->
+          <rect x="60" y="32" width="36" height="42" rx="10" fill="#1e293b"/>
+          <circle cx="72" cy="44" r="5" fill="#009DCC"/>
+          <circle cx="72" cy="62" r="5" fill="#009DCC"/>
+          <circle cx="84" cy="53" r="5" fill="#E6007E"/>
+        </svg>`,
+
+      phone_foldable: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <rect x="40" y="30" width="55" height="140" rx="12" fill="#1e293b" stroke="#009DCC" stroke-width="3"/>
+          <rect x="100" y="30" width="55" height="140" rx="12" fill="#0f172a" stroke="#009DCC" stroke-width="3"/>
+          <!-- Charnière -->
+          <line x1="97" y1="30" x2="97" y2="170" stroke="#E6007E" stroke-width="4"/>
+        </svg>`,
+
+      phone_refurbished: `
+        <svg viewBox="0 0 200 200" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <rect x="60" y="25" width="80" height="150" rx="18" fill="#0f172a" stroke="#10b981" stroke-width="4"/>
+          <!-- Éco-badge recyclage -->
+          <circle cx="100" cy="95" r="28" fill="#10b981" fill-opacity="0.2"/>
+          <path d="M 90 95 L 100 85 L 110 95 M 100 85 L 100 110" stroke="#10b981" stroke-width="4" stroke-linecap="round"/>
+        </svg>`
+    };
+
+    // ---------------------------------------------------------------------
+    // 2. ÉTAT GLOBAL ET DONNÉES PAR ÉTIQUETTE ET FORMAT
+    // ---------------------------------------------------------------------
+    let currentFormat = 'A6_GRID'; // 'A6_GRID' | 'A5_PORTRAIT' | 'A4_PORTRAIT'
+    let activeTagIndex = 0; // 0, 1, 2, 3 (pour le mode A6 Grid)
+    let currentZoom = 1.0;
+    let showCropMarks = true;
+
+    // Modèle d'étiquette par défaut
+    const createDefaultTag = (index) => {
+      const titles = [
+        "Écouteurs TWS Soundcore Liberty",
+        "Powerbank MagSafe 10000mAh",
+        "Chargeur Secteur GaN 65W Duo",
+        "Bbox Fibre Wi-Fi 7 Bouygues"
+      ];
+      const badges = ["ANKER", "BOUYGUES", "BELKIN", "BOUYGUES TELECOM"];
+      const pricesOld = ["79,99€", "49,99€", "39,99€", ""];
+      const pricesNew = ["39,99€", "29,99€", "19,99€", "25,99€"];
+      const odrs = ["30€ remboursés ODR", "15€ de remise immédiate", "100% Remboursé en Pack", "Inclus Engagement 1 an"];
+      const svgKeys = ["tws_earbuds", "powerbank_magsafe", "charger_gan_65w", "bbox_wifi7"];
+
+      return {
+        theme: "theme-studio",
+        decor: "decor-soldes",
+        badge: badges[index] || "PROMO EXCLUSIVE",
+        title: titles[index] || "Accessoire Tech Premium",
+        subtitle: "Haute Performance & Garantie 2 Ans",
+        bullets: [
+          "Autonomie longue durée & Charge ultra-rapide",
+          "Compatibilité universelle tous modèles",
+          "Conception renforcée haute durabilité",
+          "Garantie constructeur 24 mois incluse"
+        ],
+        priceOld: pricesOld[index] || "59,99€",
+        priceNew: pricesNew[index] || "29,99€",
+        odrText: odrs[index] || "Offre Spéciale Boutique",
+        subtext: "Ou paiement en 4x sans frais",
+        legalText: "Voir conditions détaillées en boutique Bouygues Telecom. Valable selon stocks disponibles.",
+        svgIconKey: svgKeys[index] || "tws_earbuds",
+        customImage: null,
+        // Curseurs d'ajustement
+        titleFontSize: 26,
+        bulletFontSize: 12,
+        iconScale: 100,
+        priceVolume: 115 // Bloc prix XXL (90% à 165%)
+      };
+    };
+
+    // Tableau de 4 étiquettes pour la grille A6
+    let tagsData = [
+      createDefaultTag(0),
+      createDefaultTag(1),
+      createDefaultTag(2),
+      createDefaultTag(3)
+    ];
+
+    // ---------------------------------------------------------------------
+    // 3. INITIALISATION & GESTION DES EVENEMENTS
+    // ---------------------------------------------------------------------
+    window.onload = function() {
+      syncFormWithActiveTag();
+      renderSheet();
+    };
+
+    function switchFormatTab(format) {
+      currentFormat = format;
+
+      // Update Tab UI active states
+      document.querySelectorAll('.format-tab-btn').forEach(btn => {
+        btn.classList.remove('bg-bouygues-cyan', 'text-slate-950', 'shadow');
+        btn.classList.add('text-slate-400');
+      });
+
+      const activeBtn = document.getElementById(
+        format === 'A6_GRID' ? 'tab-A6' : (format === 'A5_PORTRAIT' ? 'tab-A5' : 'tab-A4')
+      );
+      if (activeBtn) {
+        activeBtn.classList.add('bg-bouygues-cyan', 'text-slate-950', 'shadow');
+        activeBtn.classList.remove('text-slate-400');
+      }
+
+      // Hide or show A6 Tag selection bar
+      const a6Bar = document.getElementById('a6-selector-bar');
+      const formatLabel = document.getElementById('format-indicator-label');
+
+      if (format === 'A6_GRID') {
+        a6Bar.style.display = 'flex';
+        formatLabel.innerText = "Feuille A4 — 4 Étiquettes A6 (2×2 Grid)";
+      } else if (format === 'A5_PORTRAIT') {
+        a6Bar.style.display = 'none';
+        formatLabel.innerText = "1 Affiche A5 Portrait Centrée sur A4 (Facteur ~1.4x)";
+      } else {
+        a6Bar.style.display = 'none';
+        formatLabel.innerText = "1 Affiche A4 Portrait Pleine Page (Facteur Monumental ~1.9x)";
+      }
+
+      renderSheet();
+    }
+
+    function selectTagIndex(index) {
+      activeTagIndex = index;
+      document.querySelectorAll('.tag-select-btn').forEach((btn, i) => {
+        if (i === index) {
+          btn.className = 'tag-select-btn px-3 py-1 rounded-md text-xs font-bold bg-bouygues-cyan text-slate-950';
+        } else {
+          btn.className = 'tag-select-btn px-3 py-1 rounded-md text-xs font-medium text-slate-400 bg-slate-800 hover:text-white';
+        }
+      });
+      syncFormWithActiveTag();
+      renderSheet();
+    }
+
+    function syncFormWithActiveTag() {
+      const tag = tagsData[activeTagIndex];
+
+      document.getElementById('input-theme').value = tag.theme;
+      document.getElementById('input-decor').value = tag.decor;
+      document.getElementById('input-svg-icon').value = tag.svgIconKey;
+      document.getElementById('input-badge').value = tag.badge;
+      document.getElementById('input-title').value = tag.title;
+      document.getElementById('input-subtitle').value = tag.subtitle;
+
+      tag.bullets.forEach((b, idx) => {
+        const el = document.getElementById(`input-bullet-${idx}`);
+        if (el) el.value = b;
+      });
+
+      document.getElementById('input-price-old').value = tag.priceOld;
+      document.getElementById('input-price-new').value = tag.priceNew;
+      document.getElementById('input-odr').value = tag.odrText;
+      document.getElementById('input-subtext').value = tag.subtext;
+      document.getElementById('input-legal').value = tag.legalText;
+
+      // Sliders
+      document.getElementById('slider-title-size').value = tag.titleFontSize;
+      document.getElementById('title-size-val').innerText = tag.titleFontSize + 'px';
+
+      document.getElementById('slider-bullet-size').value = tag.bulletFontSize;
+      document.getElementById('bullet-size-val').innerText = tag.bulletFontSize + 'px';
+
+      document.getElementById('slider-icon-scale').value = tag.iconScale;
+      document.getElementById('icon-scale-val').innerText = tag.iconScale + '%';
+
+      document.getElementById('slider-price-volume').value = tag.priceVolume;
+      document.getElementById('price-volume-val').innerText = tag.priceVolume + '%';
+
+      // Custom Image
+      const removeBtn = document.getElementById('btn-remove-image');
+      if (tag.customImage) {
+        removeBtn.classList.remove('hidden');
+      } else {
+        removeBtn.classList.add('hidden');
+      }
+    }
+
+    function updateCurrentTag(key, value) {
+      tagsData[activeTagIndex][key] = value;
+
+      // Sync slider labels immediately
+      if (key === 'titleFontSize') document.getElementById('title-size-val').innerText = value + 'px';
+      if (key === 'bulletFontSize') document.getElementById('bullet-size-val').innerText = value + 'px';
+      if (key === 'iconScale') document.getElementById('icon-scale-val').innerText = value + '%';
+      if (key === 'priceVolume') document.getElementById('price-volume-val').innerText = value + '%';
+
+      renderSheet();
+    }
+
+    function updateBullet(index, value) {
+      tagsData[activeTagIndex].bullets[index] = value;
+      renderSheet();
+    }
+
+    function duplicateTagToAll() {
+      const source = JSON.parse(JSON.stringify(tagsData[activeTagIndex]));
+      for (let i = 0; i < 4; i++) {
+        tagsData[i] = JSON.parse(JSON.stringify(source));
+      }
+      renderSheet();
+    }
+
+    function handleImageUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          tagsData[activeTagIndex].customImage = e.target.result;
+          document.getElementById('btn-remove-image').classList.remove('hidden');
+          renderSheet();
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function clearCustomImage() {
+      tagsData[activeTagIndex].customImage = null;
+      document.getElementById('input-custom-image').value = '';
+      document.getElementById('btn-remove-image').classList.add('hidden');
+      renderSheet();
+    }
+
+    function toggleCropMarks(checked) {
+      showCropMarks = checked;
+      document.getElementById('crop-marks-layer').style.display = checked ? 'block' : 'none';
+    }
+
+    function zoomPreview(factor) {
+      currentZoom = Math.min(Math.max(0.5, currentZoom * factor), 1.6);
+      applyZoom();
+    }
+
+    function resetZoom() {
+      currentZoom = 1.0;
+      applyZoom();
+    }
+
+    function applyZoom() {
+      const sheet = document.getElementById('a4-sheet');
+      sheet.style.transform = `scale(${currentZoom})`;
+      document.getElementById('zoom-level-text').innerText = Math.round(currentZoom * 100) + '%';
+    }
+
+    // Presets 1-clic rapides
+    function applyPreset(presetType) {
+      if (presetType === 'accessories_pack') {
+        tagsData[activeTagIndex] = {
+          theme: "theme-neon",
+          decor: "decor-soldes",
+          badge: "JBL AUDIO",
+          title: "Enceinte Nomade Flip 6",
+          subtitle: "Son Puissant & Waterproof IP67",
+          bullets: [
+            "Puissance 30W RMS avec radiateurs passifs",
+            "Autonomie 12 heures de musique en continu",
+            "Mise en réseau PartyBoost multi-enceintes",
+            "Résistant à l'eau et à la poussière IP67"
+          ],
+          priceOld: "139,99€",
+          priceNew: "89,99€",
+          odrText: "40€ remboursés immédiatement",
+          subtext: "Ou 22,50€ x 4 mois sans frais",
+          legalText: "Offre valable en boutique Bouygues Telecom. Voir conditions.",
+          svgIconKey: "speaker_jbl",
+          customImage: null,
+          titleFontSize: 28,
+          bulletFontSize: 12,
+          iconScale: 110,
+          priceVolume: 125
+        };
+      } else if (presetType === 'bbox_wifi7') {
+        tagsData[activeTagIndex] = {
+          theme: "theme-studio",
+          decor: "decor-flash",
+          badge: "EXCLUSIVITÉ BOUYGUES",
+          title: "Bbox Ultym Fibre Wi-Fi 7",
+          subtitle: "La Vitesse Ultime jusqu'à 8 Gb/s",
+          bullets: [
+            "Débits ultra-rapides jusqu'à 8 Gbit/s descendant",
+            "Wi-Fi 7 dernière génération triple bande",
+            "Jusqu'à 2 répéteurs Wi-Fi 6 inclus sur demande",
+            "Décodeur TV 4K HDR & Plus de 180 chaînes"
+          ],
+          priceOld: "",
+          priceNew: "32,99€",
+          odrText: "Frais de mise en service offerts",
+          subtext: "Par mois pendant 12 mois puis 52,99€/mois",
+          legalText: "Engagement 1 an. Sous réserve d'éligibilité à la Fibre Bouygues Telecom.",
+          svgIconKey: "bbox_wifi7",
+          customImage: null,
+          titleFontSize: 30,
+          bulletFontSize: 13,
+          iconScale: 115,
+          priceVolume: 130
+        };
+      }
+      syncFormWithActiveTag();
+      renderSheet();
+    }
+
+    // ---------------------------------------------------------------------
+    // 4. MOTEUR DE RENDU DES ÉTIQUETTES / AFFICHES SUR LA FEUILLE A4
+    // ---------------------------------------------------------------------
+    function renderSheet() {
+      const container = document.getElementById('tags-render-container');
+      const cropV = document.getElementById('crop-mark-v');
+      const cropH = document.getElementById('crop-mark-h');
+
+      if (currentFormat === 'A6_GRID') {
+        // Grille de 4 étiquettes A6 (2x2)
+        if (cropV) cropV.style.display = 'block';
+        if (cropH) cropH.style.display = 'block';
+
+        container.className = 'w-full h-full grid grid-cols-2 grid-rows-2 gap-0 p-0';
+        container.innerHTML = tagsData.map((tag, idx) => generateTagHTML(tag, idx, 1.0)).join('');
+
+      } else if (currentFormat === 'A5_PORTRAIT') {
+        // 1 Seule affiche A5 portrait centrée sur A4 avec repères
+        if (cropV) cropV.style.display = 'none';
+        if (cropH) cropH.style.display = 'none';
+
+        container.className = 'w-full h-full flex items-center justify-center p-6 bg-slate-100/50';
+        // Affiche A5 prend 148.5mm x 210mm sur la page (échelle ~1.4x)
+        const activeTag = tagsData[activeTagIndex];
+        container.innerHTML = `
+          <div class="w-[148.5mm] h-[210mm] shadow-2xl border border-dashed border-slate-400 relative bg-white overflow-hidden">
+            ${generateTagHTML(activeTag, activeTagIndex, 1.42)}
+          </div>
+        `;
+
+      } else if (currentFormat === 'A4_PORTRAIT') {
+        // 1 Affiche A4 Portrait Pleine Page (échelle ~1.9x)
+        if (cropV) cropV.style.display = 'none';
+        if (cropH) cropH.style.display = 'none';
+
+        container.className = 'w-full h-full p-0';
+        const activeTag = tagsData[activeTagIndex];
+        container.innerHTML = generateTagHTML(activeTag, activeTagIndex, 1.92);
+      }
+    }
+
+    // Générateur HTML d'une étiquette unique avec mise à l'échelle proportionnelle
+    function generateTagHTML(tag, index, scaleFactor = 1.0) {
+      // Intégration de l'image (SVG ou Custom Upload)
+      let imageHTML = '';
+      if (tag.customImage) {
+        imageHTML = `<img src="${tag.customImage}" class="max-h-full max-w-full object-contain filter drop-shadow-xl" style="transform: scale(${tag.iconScale / 100});">`;
+      } else {
+        const svgContent = SVG_LIBRARY[tag.svgIconKey] || SVG_LIBRARY['tws_earbuds'];
+        imageHTML = `<div class="w-full h-full flex items-center justify-center p-1" style="transform: scale(${tag.iconScale / 100});">${svgContent}</div>`;
+      }
+
+      // Banner Saisonnière / Décor
+      let decorBannerHTML = '';
+      if (tag.decor && tag.decor !== 'decor-neutre') {
+        let textDecor = 'OFFRE SPÉCIALE';
+        if (tag.decor === 'decor-soldes') textDecor = '🔥 SOLDES BAZAR & TECH';
+        if (tag.decor === 'decor-blackfriday') textDecor = '⚡ BLACK FRIDAY DEALS';
+        if (tag.decor === 'decor-noel') textDecor = '🎄 SÉLECTION DE NOËL';
+        if (tag.decor === 'decor-flash') textDecor = '⚡ VENTE FLASH EXCLUSIVE';
+        if (tag.decor === 'decor-frenchdays') textDecor = '🇫🇷 FRENCH DAYS';
+        if (tag.decor === 'decor-rentree') textDecor = '🎒 OFFRES RENTRÉE TECH';
+
+        decorBannerHTML = `
+          <div class="${tag.decor} w-full text-center py-1 font-black uppercase text-[10px] tracking-widest shadow-sm" style="font-size: ${Math.round(10 * scaleFactor)}px;">
+            ${textDecor}
+          </div>
+        `;
+      }
+
+      // Dimensionnement dynamique des textes selon scaleFactor
+      const calcTitleSize = Math.round(tag.titleFontSize * scaleFactor);
+      const calcBulletSize = Math.round(tag.bulletFontSize * scaleFactor);
+      const calcPriceHeight = Math.round(tag.priceVolume); // en % de hauteur / flex
+
+      // Style d'indicateur pour le mode d'édition A6
+      const isSelected = (currentFormat === 'A6_GRID' && index === activeTagIndex);
+      const outlineClass = isSelected ? 'ring-4 ring-bouygues-cyan ring-inset' : '';
+
+      return `
+        <div class="w-full h-full ${tag.theme} flex flex-col justify-between relative overflow-hidden ${outlineClass} transition-all">
+
+          <!-- BANNIÈRE SAISONNIÈRE SUPÉRIEURE -->
+          ${decorBannerHTML}
+
+          <!-- ENTÊTE : BADGE MARQUE & SOUS-TITRE -->
+          <div class="px-4 pt-3 flex items-center justify-between gap-2">
+            <span class="badge-pop px-2.5 py-1 rounded-md text-[11px] font-black tracking-wider uppercase shadow-sm" style="font-size: ${Math.round(11 * scaleFactor)}px;">
+              ${escapeHTML(tag.badge)}
+            </span>
+            <span class="text-[10px] font-semibold opacity-80 uppercase tracking-tight text-right line-clamp-1" style="font-size: ${Math.round(10 * scaleFactor)}px;">
+              ${escapeHTML(tag.subtitle)}
+            </span>
+          </div>
+
+          <!-- TITRE DU PRODUIT -->
+          <div class="px-4 pt-1.5 pb-1">
+            <h2 class="font-extrabold leading-tight tracking-tight line-clamp-2" style="font-size: ${calcTitleSize}px;">
+              ${escapeHTML(tag.title)}
+            </h2>
+          </div>
+
+          <!-- CORPS CENTRAL : VISUEL ILLUSTRATION + CARACTÉRISTIQUES -->
+          <div class="px-4 py-1 flex-1 grid grid-cols-12 gap-2 items-center overflow-hidden">
+
+            <!-- ZONE IMAGE / SVG (5 COLS) -->
+            <div class="col-span-5 h-full flex items-center justify-center relative">
+              <div class="absolute inset-0 bg-white/5 rounded-2xl filter blur-xl opacity-30"></div>
+              ${imageHTML}
+            </div>
+
+            <!-- ZONE PUCES DE CARACTÉRISTIQUES (7 COLS) -->
+            <div class="col-span-7 space-y-1.5 flex flex-col justify-center">
+              ${tag.bullets.filter(b => b.trim() !== '').map(bullet => `
+                <div class="flex items-start gap-1.5 leading-snug">
+                  <div class="w-2.5 h-2.5 rounded-full bg-bouygues-cyan flex items-center justify-center shrink-0 mt-0.5" style="width: ${Math.round(12 * scaleFactor)}px; height: ${Math.round(12 * scaleFactor)}px;">
+                    <i class="fa-solid fa-check text-slate-950 font-bold" style="font-size: ${Math.round(7 * scaleFactor)}px;"></i>
+                  </div>
+                  <span class="font-medium opacity-95 line-clamp-2" style="font-size: ${calcBulletSize}px;">
+                    ${escapeHTML(bullet)}
+                  </span>
+                </div>
+              `).join('')}
+            </div>
+
+          </div>
+
+          <!-- SECTEUR ODR / REMBOURSEMENT -->
+          ${tag.odrText ? `
+            <div class="px-4 py-0.5">
+              <div class="bg-rose-600/90 text-white font-extrabold text-center py-1 px-2 rounded-lg tracking-wide uppercase shadow-sm" style="font-size: ${Math.round(11 * scaleFactor)}px;">
+                <i class="fa-solid fa-gift mr-1"></i> ${escapeHTML(tag.odrText)}
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- BLOC PRIX XXL SUR-MESURE (VOLUMÉTRIE AJUSTABLE) -->
+          <div class="px-3 pb-3 pt-1">
+            <div class="price-block rounded-2xl p-2.5 shadow-lg flex flex-col justify-center items-center text-center relative overflow-hidden" style="transform: scale(${calcPriceHeight / 100}); transform-origin: bottom center;">
+
+              <div class="flex items-baseline justify-center gap-3">
+                <!-- PRIX BARRÉ -->
+                ${tag.priceOld ? `
+                  <span class="line-through text-slate-300 font-bold opacity-75" style="font-size: ${Math.round(16 * scaleFactor)}px;">
+                    ${escapeHTML(tag.priceOld)}
+                  </span>
+                ` : ''}
+
+                <!-- PRIX FINAL PROMO -->
+                <span class="font-black text-bouygues-yellow tracking-tighter leading-none drop-shadow-md" style="font-size: ${Math.round(34 * scaleFactor)}px;">
+                  ${escapeHTML(tag.priceNew)}
+                </span>
+              </div>
+
+              <!-- CONDITION PAIMENT / FORFAIT -->
+              ${tag.subtext ? `
+                <div class="text-[10px] font-semibold opacity-90 mt-1 uppercase tracking-wider" style="font-size: ${Math.round(9.5 * scaleFactor)}px;">
+                  ${escapeHTML(tag.subtext)}
+                </div>
+              ` : ''}
+
+            </div>
+          </div>
+
+          <!-- MENTIONS LÉGALES / INDICE DAS -->
+          <div class="px-4 pb-2 text-[8px] opacity-60 text-center leading-tight line-clamp-1" style="font-size: ${Math.round(7.5 * scaleFactor)}px;">
+            ${escapeHTML(tag.legalText)}
+          </div>
+
+        </div>
+      `;
+    }
+
+    // Sécurité contre les injections XSS dans les champs
+    function escapeHTML(str) {
+      if (!str) return '';
+      return str.replace(/[&<>'"]/g, 
+        tag => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          "'": '&#39;',
+          '"': '&quot;'
+        }[tag] || tag)
+      );
+    }
+  </script>
+</body>
+</html>
